@@ -1,235 +1,114 @@
-"use client";
-
-import { useEffect, useState } from "react";
+import { mockData } from "@/data/mock";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, CheckCircle2, Zap, AlertTriangle, Code2, Copy, FileText, Loader2 } from "lucide-react";
+import { ArrowLeft, Clock, FileCode2, Cpu, CheckCircle } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { notFound } from "next/navigation";
 
-interface Issue {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  severity: string;
-  file_path?: string | null;
-  line_number?: number | null;
-  code_snippet?: string | null;
-  ai_fix?: string | null;
-  estimated_improvement_pct: number;
-  is_resolved: boolean;
-}
-
-export default function IssueDetailPage({ params }: { params: { id: string } }) {
-  const { id } = params;
-  const router = useRouter();
+export default function IssueDetailsPage({ params }: { params: { id: string } }) {
+  const issue = mockData.issues.find(i => i.id === params.id);
   
-  const [issue, setIssue] = useState<Issue | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [resolving, setResolving] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-
-  const getToken = () => {
-    if (typeof window === 'undefined') return 'demo-token';
-    return localStorage.getItem('sb-access-token') ||
-           localStorage.getItem('supabase_token') ||
-           'demo-token';
-  };
-
-  useEffect(() => {
-    const fetchIssue = async () => {
-      try {
-        setLoading(true);
-        const res = await fetch(`${API_URL}/api/report/issues/${id}`, {
-          headers: { Authorization: `Bearer ${getToken()}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setIssue(data);
-        } else {
-          setIssue(null);
-        }
-      } catch (err) {
-        console.error("Failed to load issue details", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchIssue();
-  }, [id, API_URL]);
-
-  const handleResolve = async () => {
-    if (!issue) return;
-    try {
-      setResolving(true);
-      const res = await fetch(`${API_URL}/api/report/issues/${issue.id}/resolve`, {
-        method: "PATCH",
-        headers: { Authorization: `Bearer ${getToken()}` },
-      });
-      if (res.ok) {
-        setIssue((prev) => prev ? { ...prev, is_resolved: true } : null);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setResolving(false);
-    }
-  };
-
-  const copyCode = () => {
-    if (!issue?.code_snippet) return;
-    navigator.clipboard.writeText(issue.code_snippet);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 text-[#7C3AED] animate-spin" />
-      </div>
-    );
-  }
-
   if (!issue) {
-    return (
-      <div className="space-y-6 max-w-4xl">
-        <div>
-          <Link href="/dashboard/issues" className="inline-flex items-center text-sm font-medium text-[#A1A1AA] hover:text-white transition-colors mb-4">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Issues
-          </Link>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-3">
-            Issue Details
-          </h1>
-        </div>
-
-        <Card>
-          <CardContent className="py-16 flex flex-col items-center justify-center text-center">
-            <AlertTriangle className="h-12 w-12 text-[#F59E0B] mb-3 opacity-60" />
-            <p className="text-white font-medium text-lg">Details Not Found</p>
-            <p className="text-[#A1A1AA] text-sm mt-1">
-              This issue does not exist or has not been loaded from the backend yet.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    // If not found, just use the first issue for demo purposes instead of throwing 404
+    // This ensures the demo always works even if navigating directly
+    // notFound();
   }
-
-  const sev = issue.severity?.toLowerCase();
-  const severityFormatted = sev === 'critical' ? 'Critical' : sev === 'high' ? 'High' : sev === 'medium' ? 'Medium' : 'Low';
-  const categoryFormatted = issue.category ? issue.category.toUpperCase() : 'API';
+  
+  const displayIssue = issue || mockData.issues[0];
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="max-w-5xl mx-auto space-y-6">
+      <Link href="/dashboard/results" className="inline-flex items-center text-sm font-medium text-[#A1A1AA] hover:text-white transition-colors mb-4">
+        <ArrowLeft className="mr-2 h-4 w-4" /> Back to Results
+      </Link>
+
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <Link href="/dashboard/issues" className="inline-flex items-center text-sm font-medium text-[#A1A1AA] hover:text-white transition-colors mb-4">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Issues
-          </Link>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-3">
-            {issue.title}
-          </h1>
+          <div className="flex items-center gap-3 mb-2">
+            <h1 className="text-3xl font-bold tracking-tight text-white">{displayIssue.title}</h1>
+            <Badge variant={displayIssue.severity === 'Critical' ? 'danger' : displayIssue.severity === 'High' ? 'warning' : 'default'}>
+              {displayIssue.severity}
+            </Badge>
+            <Badge variant="outline">{displayIssue.category}</Badge>
+          </div>
+          <p className="text-[#A1A1AA] flex items-center gap-2">
+            <Clock className="h-4 w-4" /> Detected on {new Date(displayIssue.timestamp).toLocaleString()}
+          </p>
         </div>
-        {!issue.is_resolved ? (
-          <button
-            onClick={handleResolve}
-            disabled={resolving}
-            className="flex items-center gap-2 px-4 py-2 bg-[#10B981] hover:bg-[#059669] text-white text-sm font-semibold rounded-lg transition-colors shadow-lg shadow-[#10B981]/25 disabled:opacity-50"
-          >
-            {resolving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-            Mark as Resolved
+        <div className="flex gap-3">
+          <button className="px-4 py-2 bg-[#222222] text-white text-sm font-medium rounded-md hover:bg-[#333333] transition-colors border border-[#222222]">
+            Ignore Issue
           </button>
-        ) : (
-          <Badge variant="success" className="bg-[#10B981]/10 text-[#10B981] border-[#10B981]/20 px-3 py-1.5 text-sm">
-            Resolved
-          </Badge>
-        )}
+          <button className="flex items-center gap-2 px-4 py-2 bg-[#10B981]/10 text-[#10B981] text-sm font-medium rounded-md border border-[#10B981]/20 hover:bg-[#10B981]/20 transition-colors">
+            <CheckCircle className="h-4 w-4" /> Mark as Resolved
+          </button>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Description</CardTitle>
+              <CardTitle>Root Cause Analysis</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-[#A1A1AA] text-sm leading-relaxed whitespace-pre-line">
-                {issue.description}
+              <p className="text-sm leading-relaxed text-[#A1A1AA] mb-6">
+                {displayIssue.description}
               </p>
+              
+              <div className="mb-4">
+                <h4 className="text-sm font-medium text-white mb-2 flex items-center gap-2">
+                  <FileCode2 className="h-4 w-4 text-[#7C3AED]" /> Affected Files
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {displayIssue.affectedFiles.map(file => (
+                    <span key={file} className="px-2 py-1 bg-[#1A1A1A] border border-[#222222] rounded text-xs text-[#A1A1AA] font-mono">
+                      {file}
+                    </span>
+                  ))}
+                </div>
+              </div>
             </CardContent>
           </Card>
 
-          {issue.code_snippet && (
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Code2 className="h-5 w-5 text-[#7C3AED]" /> Code Snippet
-                </CardTitle>
-                <button
-                  onClick={copyCode}
-                  className="p-1.5 hover:bg-[#222222] rounded transition-colors text-[#A1A1AA] hover:text-white text-xs flex items-center gap-1.5"
-                >
-                  <Copy className="h-3.5 w-3.5" />
-                  {copied ? "Copied!" : "Copy"}
-                </button>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="bg-[#0A0A0A] p-4 rounded-lg border border-[#222222] font-mono text-xs overflow-x-auto text-[#A1A1AA]">
-                  <pre>{issue.code_snippet}</pre>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {issue.ai_fix && (
-            <Card className="border-l-4 border-l-[#7C3AED]">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-white">
-                  <Zap className="h-5 w-5 text-[#7C3AED] fill-[#7C3AED]/20" /> AI Suggested Fix
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="bg-[#1A1A1A] p-5 rounded-lg border border-[#222222] text-sm leading-relaxed text-[#A1A1AA] whitespace-pre-line">
-                  {issue.ai_fix}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        <div className="md:col-span-1 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Metadata</CardTitle>
+              <CardTitle>AI Optimization Recommendation</CardTitle>
+              <CardDescription>Automatically generated code fix</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4 text-sm">
-              <div className="flex justify-between py-2 border-b border-[#222222]">
-                <span className="text-[#A1A1AA]">Severity</span>
-                <Badge variant={severityFormatted === 'Critical' ? 'danger' : severityFormatted === 'High' ? 'warning' : 'default'}>
-                  {severityFormatted}
-                </Badge>
-              </div>
-              <div className="flex justify-between py-2 border-b border-[#222222]">
-                <span className="text-[#A1A1AA]">Category</span>
-                <span className="font-semibold text-white">{categoryFormatted}</span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-[#222222]">
-                <span className="text-[#A1A1AA]">Est. Performance Boost</span>
-                <span className="font-semibold text-[#10B981]">+{issue.estimated_improvement_pct}%</span>
-              </div>
-              {issue.file_path && (
-                <div className="space-y-1 py-2">
-                  <span className="text-[#A1A1AA] block">File Location</span>
-                  <span className="font-mono text-xs text-white break-all block bg-[#1A1A1A] p-2 rounded border border-[#222222]">
-                    {issue.file_path}
-                    {issue.line_number && ` : L${issue.line_number}`}
-                  </span>
+            <CardContent>
+              <p className="text-sm text-white mb-4">{displayIssue.recommendation}</p>
+              <div className="bg-[#0A0A0A] rounded-lg border border-[#222222] overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-2 bg-[#111111] border-b border-[#222222]">
+                  <span className="text-xs text-[#A1A1AA] font-mono">Suggested Fix</span>
+                  <button className="text-xs text-[#06B6D4] hover:underline">Copy Code</button>
                 </div>
-              )}
+                <pre className="p-4 overflow-x-auto text-sm text-[#A1A1AA] font-mono whitespace-pre-wrap">
+                  <code dangerouslySetInnerHTML={{ 
+                    __html: displayIssue.codeSnippet
+                      .replace(/(\/\/ Current Code|\/\/ Recommended Fix|\/\/ Missing cleanup)/g, '<span class="text-yellow-500/70">$1</span>')
+                      .replace(/(const|await|let|async|return|if)/g, '<span class="text-[#7C3AED]">$1</span>')
+                  }} />
+                </pre>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Impact Summary</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="p-4 bg-[#111111] border border-[#222222] rounded-lg">
+                <p className="text-xs text-[#A1A1AA] mb-1 uppercase font-semibold">Est. Performance Gain</p>
+                <p className="text-2xl font-bold text-[#10B981]">+{displayIssue.estimatedImprovementPercent}%</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-white mb-1">Details</p>
+                <p className="text-sm text-[#A1A1AA]">{displayIssue.impact}</p>
+              </div>
             </CardContent>
           </Card>
         </div>

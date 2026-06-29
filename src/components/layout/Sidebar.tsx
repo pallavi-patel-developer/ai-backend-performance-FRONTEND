@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -31,33 +30,6 @@ const navigation = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const [user, setUser] = useState<{ email: string; plan: string } | null>(null);
-  const [isDemo, setIsDemo] = useState(true);
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      const token = localStorage.getItem("sb-access-token");
-      if (!token || token === "demo-token") {
-        setIsDemo(true);
-        setUser(null);
-        return;
-      }
-      setIsDemo(false);
-      try {
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-        const res = await fetch(`${API_URL}/api/auth/me`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setUser(data);
-        }
-      } catch (err) {
-        console.error("Failed to load user profile", err);
-      }
-    };
-    fetchUser();
-  }, []);
 
   return (
     <div className="flex h-full w-64 flex-col bg-[#0A0A0A] border-r border-[#222222]">
@@ -95,37 +67,14 @@ export function Sidebar() {
           })}
         </nav>
       </div>
-      <div className="p-4 border-t border-[#222222] space-y-3">
+      <div className="p-4 border-t border-[#222222]">
         <div className="flex items-center">
-          <div className="h-8 w-8 rounded-full bg-gradient-to-r from-[#7C3AED] to-[#06B6D4] shrink-0" />
-          <div className="ml-3 min-w-0">
-            <p className="text-sm font-medium text-white truncate">
-              {isDemo ? "Guest Mode" : user?.email || "Loading..."}
-            </p>
-            <p className="text-xs text-[#A1A1AA] uppercase font-semibold tracking-wider">
-              {isDemo ? "Free Mode" : `${user?.plan || "free"} plan`}
-            </p>
+          <div className="h-8 w-8 rounded-full bg-gradient-to-r from-[#7C3AED] to-[#06B6D4]" />
+          <div className="ml-3">
+            <p className="text-sm font-medium text-white">John Doe</p>
+            <p className="text-xs text-[#A1A1AA]">Pro Plan</p>
           </div>
         </div>
-        {isDemo ? (
-          <Link
-            href="/auth"
-            className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-semibold rounded transition-colors text-center"
-          >
-            Sign In to Sync
-          </Link>
-        ) : (
-          <button
-            onClick={() => {
-              localStorage.removeItem("sb-access-token");
-              localStorage.removeItem("supabase_token");
-              window.location.href = "/auth";
-            }}
-            className="w-full py-1.5 px-3 border border-[#333333] hover:border-[#EF4444] hover:text-[#EF4444] text-[#A1A1AA] text-xs font-semibold rounded transition-colors text-center"
-          >
-            Sign Out
-          </button>
-        )}
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
+import { mockData } from "@/data/mock";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
@@ -17,7 +18,6 @@ import {
   Cpu,
   MemoryStick,
   ArrowUpDown,
-  Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -42,80 +42,8 @@ export default function IssuesPage() {
   const [activeStatus, setActiveStatus] = useState("All");
   const [activeCategory, setActiveCategory] = useState("All");
   const [sortBy, setSortBy] = useState<"severity" | "timestamp" | "improvement">("severity");
-  
-  const [issues, setIssues] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchIssues = async () => {
-      try {
-        setLoading(true);
-        const token = localStorage.getItem("sb-access-token") || "demo-token";
-        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-        
-        // Fetch issues
-        const res = await fetch(`${API_URL}/api/report/issues/all`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const rawIssues = await res.json();
-          
-          // Also fetch projects to get project names
-          const projRes = await fetch(`${API_URL}/api/projects`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          const projectsData = projRes.ok ? await projRes.json() : [];
-          
-          // Also fetch scans to link issue to project
-          const scanRes = await fetch(`${API_URL}/api/scan`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          const scansData = scanRes.ok ? await scanRes.json() : [];
-
-          const mapped = rawIssues.map((issue: any) => {
-            const scan = scansData.find((s: any) => s.id === issue.scan_id);
-            const project = scan ? projectsData.find((p: any) => p.id === scan.project_id) : null;
-            
-            // Format category
-            let categoryFormatted = 'API';
-            const cat = issue.category?.toLowerCase();
-            if (cat === 'database') categoryFormatted = 'Database';
-            else if (cat === 'memory') categoryFormatted = 'Memory';
-            else if (cat === 'cpu') categoryFormatted = 'CPU';
-            else if (cat === 'security') categoryFormatted = 'Caching'; // Default mapping to match chip rules
-            else if (cat === 'architecture') categoryFormatted = 'CPU';
-
-            // Format severity
-            let severityFormatted = 'Low';
-            const sev = issue.severity?.toLowerCase();
-            if (sev === 'critical') severityFormatted = 'Critical';
-            else if (sev === 'high') severityFormatted = 'High';
-            else if (sev === 'medium') severityFormatted = 'Medium';
-
-            return {
-              id: issue.id,
-              title: issue.title,
-              description: issue.description || '',
-              severity: severityFormatted,
-              category: categoryFormatted,
-              status: issue.is_resolved ? 'Resolved' : 'Open',
-              project: project?.name || 'Unknown Project',
-              estimatedImprovementPercent: issue.estimated_improvement_pct || 0,
-              file: issue.file_path || 'url-scan',
-              lineNumber: issue.line_number || 0,
-              timestamp: issue.created_at,
-            };
-          });
-          setIssues(mapped);
-        }
-      } catch (err) {
-        console.error("Failed to load issues", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchIssues();
-  }, []);
+  const issues = mockData.issues;
 
   const stats = useMemo(() => ({
     total: issues.length,
@@ -137,20 +65,12 @@ export default function IssuesPage() {
         return matchSearch && matchSeverity && matchStatus && matchCategory;
       })
       .sort((a, b) => {
-        if (sortBy === "severity") return (severityOrder[a.severity] ?? 99) - (severityOrder[b.severity] ?? 99);
+        if (sortBy === "severity") return severityOrder[a.severity] - severityOrder[b.severity];
         if (sortBy === "timestamp") return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-        if (sortBy === "improvement") return (b.estimatedImprovementPercent || 0) - (a.estimatedImprovementPercent || 0);
+        if (sortBy === "improvement") return b.estimatedImprovementPercent - a.estimatedImprovementPercent;
         return 0;
       });
   }, [issues, search, activeSeverity, activeStatus, activeCategory, sortBy]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full min-h-[400px]">
-        <Loader2 className="h-8 w-8 text-[#7C3AED] animate-spin" />
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -160,10 +80,10 @@ export default function IssuesPage() {
           <h1 className="text-2xl font-bold tracking-tight text-white">Issues</h1>
           <p className="text-[#A1A1AA]">All detected performance bottlenecks and AI recommendations.</p>
         </div>
-        <Link href="/dashboard/upload" className="inline-flex items-center gap-2 px-4 py-2 bg-[#7C3AED] text-white text-sm font-medium rounded-lg hover:bg-[#6D28D9] transition-colors">
+        <button className="inline-flex items-center gap-2 px-4 py-2 bg-[#7C3AED] text-white text-sm font-medium rounded-lg hover:bg-[#6D28D9] transition-colors">
           <Zap className="h-4 w-4" />
           Run New Scan
-        </Link>
+        </button>
       </div>
 
       {/* Stats cards */}
@@ -298,8 +218,8 @@ export default function IssuesPage() {
           <Card>
             <CardContent className="py-16 flex flex-col items-center justify-center text-center">
               <CheckCircle2 className="h-12 w-12 text-[#10B981] mb-3 opacity-60" />
-              <p className="text-white font-medium text-lg">No issues found</p>
-              <p className="text-[#A1A1AA] text-sm mt-1">Run a scan to detect backend bottlenecks.</p>
+              <p className="text-white font-medium text-lg">No issues match your filters</p>
+              <p className="text-[#A1A1AA] text-sm mt-1">Try adjusting your search or filter criteria.</p>
             </CardContent>
           </Card>
         ) : (
@@ -329,48 +249,47 @@ export default function IssuesPage() {
                         )} />
                       </div>
 
-                      {/* Content */}
+                      {/* Main content */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-1.5">
-                          <h3 className="font-semibold text-white text-base group-hover:text-[#7C3AED] transition-colors line-clamp-1">
-                            {issue.title}
-                          </h3>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <Badge variant={issue.severity === "Critical" ? "danger" : issue.severity === "High" ? "warning" : "default"}>
-                              {issue.severity}
-                            </Badge>
-                            {isResolved && (
-                              <Badge variant="success" className="bg-[#10B981]/10 text-[#10B981] border-[#10B981]/20">
-                                Resolved
-                              </Badge>
-                            )}
-                          </div>
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                          <span className="text-xs text-[#A1A1AA] font-mono">{issue.id}</span>
+                          <Badge
+                            variant={
+                              issue.severity === "Critical" ? "danger" :
+                              issue.severity === "High" ? "warning" :
+                              "default"
+                            }
+                          >
+                            {issue.severity}
+                          </Badge>
+                          <Badge variant="outline" className="border-[#333333] text-[#A1A1AA]">
+                            {issue.category}
+                          </Badge>
+                          {isResolved && (
+                            <Badge variant="success">Resolved</Badge>
+                          )}
                         </div>
+                        <h3 className="font-semibold text-white text-base group-hover:text-[#7C3AED] transition-colors truncate">
+                          {issue.title}
+                        </h3>
+                        <p className="text-sm text-[#A1A1AA] mt-1 line-clamp-1">{issue.description}</p>
 
-                        <p className="text-sm text-[#A1A1AA] line-clamp-2 mb-3">
-                          {issue.description}
-                        </p>
-
-                        <div className="flex flex-wrap items-center gap-4 text-xs">
-                          <span className="flex items-center gap-1.5 text-[#A1A1AA]">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#333333]" />
-                            {issue.project}
+                        <div className="flex flex-wrap items-center gap-4 mt-3">
+                          <span className="text-xs text-[#A1A1AA] flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {new Date(issue.timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                           </span>
-                          <span className="text-[#333333]">•</span>
-                          <span className="flex items-center gap-1 text-[#10B981] font-medium">
-                            <Zap className="h-3.5 w-3.5" />
-                            +{issue.estimatedImprovementPercent}% boost
+                          <span className="text-xs text-[#10B981] font-medium">
+                            +{issue.estimatedImprovementPercent}% est. gain
                           </span>
-                          <span className="text-[#333333]">•</span>
-                          <span className="text-[#A1A1AA] font-mono">
-                            {issue.file}:{issue.lineNumber}
-                          </span>
-                          <span className="flex-1" />
-                          <span className="text-[#A1A1AA] flex items-center gap-1 group-hover:text-white transition-colors">
-                            View Solution <ChevronRight className="h-3 w-3" />
+                          <span className="text-xs text-[#A1A1AA]">
+                            {issue.affectedFiles.length} file{issue.affectedFiles.length !== 1 ? "s" : ""} affected
                           </span>
                         </div>
                       </div>
+
+                      {/* Right arrow */}
+                      <ChevronRight className="h-4 w-4 text-[#A1A1AA] flex-shrink-0 mt-1 group-hover:text-[#7C3AED] transition-colors" />
                     </div>
                   </CardContent>
                 </Card>
@@ -379,6 +298,14 @@ export default function IssuesPage() {
           })
         )}
       </div>
+
+      {/* Footer count */}
+      {filtered.length > 0 && (
+        <p className="text-center text-sm text-[#A1A1AA]">
+          Showing <span className="text-white font-medium">{filtered.length}</span> of{" "}
+          <span className="text-white font-medium">{issues.length}</span> issues
+        </p>
+      )}
     </div>
   );
 }
