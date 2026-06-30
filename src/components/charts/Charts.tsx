@@ -38,7 +38,7 @@ export function SeverityPieChart({ data }: { data: any[] }) {
             dataKey="value"
           >
             {data.map((entry, index) => (
-              <Cell key={`cell-\${index}`} fill={COLORS[index % COLORS.length]} />
+              <Cell key={`pie-cell-${entry.name ?? index}`} fill={COLORS[index % COLORS.length]} />
             ))}
           </Pie>
           <Tooltip 

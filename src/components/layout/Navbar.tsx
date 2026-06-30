@@ -24,7 +24,7 @@ export function Navbar() {
             </Link>
           </nav>
           <div className="flex items-center space-x-4">
-            <Link href="/dashboard" className="text-sm font-medium text-[#A1A1AA] hover:text-white transition-colors hidden sm:block">
+            <Link href="/auth" className="text-sm font-medium text-[#A1A1AA] hover:text-white transition-colors hidden sm:block">
               Sign In
             </Link>
             <Link
