@@ -224,7 +224,7 @@ export default function AuthPage() {
             <div className="mt-4 text-center">
               <button
                 onClick={() => {
-                  setEmail("demo@perfdoctor.ai");
+                  setEmail("pallavipatel8080@gmail.com");
                   setPassword("demo1234");
                   setError(null);
                   setSuccess("Filled demo credentials!");

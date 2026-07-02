@@ -59,7 +59,10 @@ function ScoreRing({ score }: { score: number }) {
   );
 }
 
+import { useRouter } from "next/navigation";
+
 export default function ProjectsPage() {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [activeStatus, setActiveStatus] = useState("All");
   const [view, setView] = useState<"grid" | "list">("grid");
@@ -238,6 +241,7 @@ export default function ProjectsPage() {
             return (
               <Card
                 key={project.id}
+                onClick={() => router.push(`/dashboard/projects/${project.id}`)}
                 className="group hover:border-[#333333] hover:shadow-xl hover:shadow-black/40 transition-all duration-200 cursor-pointer"
               >
                 <CardContent className="p-5 space-y-4">
@@ -273,6 +277,7 @@ export default function ProjectsPage() {
                     </p>
                     <Link
                       href={`/dashboard/upload?projectId=${project.id}`}
+                      onClick={(e) => e.stopPropagation()}
                       className="text-xs text-[#7C3AED] hover:text-[#A78BFA] font-medium flex items-center gap-0.5 transition-colors"
                     >
                       Run Scan <ChevronRight className="h-3 w-3" />
@@ -300,6 +305,7 @@ export default function ProjectsPage() {
             return (
               <Card
                 key={project.id}
+                onClick={() => router.push(`/dashboard/projects/${project.id}`)}
                 className="group hover:border-[#333333] transition-all duration-200 cursor-pointer"
               >
                 <CardContent className="p-4">
@@ -331,7 +337,7 @@ export default function ProjectsPage() {
                     </div>
 
                     <div className="hidden md:flex col-span-1 justify-end">
-                      <Link href={`/dashboard/upload?projectId=${project.id}`}>
+                      <Link href={`/dashboard/upload?projectId=${project.id}`} onClick={(e) => e.stopPropagation()}>
                         <ChevronRight className="h-4 w-4 text-[#A1A1AA] group-hover:text-[#7C3AED] transition-colors" />
                       </Link>
                     </div>

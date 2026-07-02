@@ -1,16 +1,81 @@
-import { mockData } from "@/data/mock";
+"use client";
+
+import { useEffect, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Download, CheckCircle2 } from "lucide-react";
+import { FileText, Download, CheckCircle2, Loader2, AlertCircle } from "lucide-react";
 import Link from "next/link";
 
-export default function ResultsPage() {
+function ResultsContent() {
+  const searchParams = useSearchParams();
+  const scanId = searchParams.get("scanId");
+  
+  const [scan, setScan] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchScan() {
+      if (!scanId) {
+        setError("No scan ID provided in URL.");
+        setLoading(false);
+        return;
+      }
+      try {
+        const token = localStorage.getItem("sb-access-token") || localStorage.getItem("supabase_token") || "demo-token";
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const res = await fetch(`${API_URL}/api/scan/${scanId}`, {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+        
+        if (!res.ok) {
+          throw new Error("Failed to load scan data.");
+        }
+        
+        const data = await res.json();
+        setScan(data);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchScan();
+  }, [scanId]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 space-y-4">
+        <Loader2 className="h-8 w-8 text-[#7C3AED] animate-spin" />
+        <p className="text-[#A1A1AA]">Loading scan results...</p>
+      </div>
+    );
+  }
+
+  if (error || !scan) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 space-y-4 text-[#EF4444]">
+        <AlertCircle className="h-8 w-8" />
+        <p>{error || "Scan not found."}</p>
+        <Link href="/dashboard" className="text-[#06B6D4] hover:underline">Return to Dashboard</Link>
+      </div>
+    );
+  }
+
+  const issues = scan.issues || [];
+  const aiReport = scan.ai_reports?.[0] || {};
+  const score = scan.overall_score || 0;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-white">Analysis Results</h1>
-          <p className="text-[#A1A1AA]">Latest diagnostics for "Payment Gateway API"</p>
+          <p className="text-[#A1A1AA]">Latest diagnostics for "{scan.source_value}"</p>
         </div>
         <button className="flex items-center gap-2 px-4 py-2 bg-[#222222] hover:bg-[#333333] text-white text-sm font-medium rounded-md transition-colors border border-[#222222]">
           <Download className="h-4 w-4" /> Download PDF Report
@@ -25,16 +90,18 @@ export default function ResultsPage() {
           <CardContent className="flex flex-col items-center justify-center py-6">
             <div className="relative h-32 w-32 flex items-center justify-center rounded-full border-8 border-[#222222]">
               <div className="absolute inset-0 rounded-full border-8 border-[#7C3AED] border-l-transparent border-b-transparent transform rotate-45"></div>
-              <span className="text-4xl font-bold text-white">{mockData.dashboard.performanceScore}</span>
+              <span className="text-4xl font-bold text-white">{score}</span>
             </div>
-            <p className="mt-4 text-sm font-medium text-[#F59E0B]">Moderate Risk</p>
+            <p className="mt-4 text-sm font-medium text-[#10B981]">
+              {score >= 80 ? 'Excellent' : score >= 50 ? 'Moderate Risk' : 'Critical Risk'}
+            </p>
           </CardContent>
         </Card>
         
         <Card className="md:col-span-3">
           <CardHeader>
             <CardTitle>Issues Summary</CardTitle>
-            <CardDescription>We found {mockData.issues.length} issues impacting your backend performance.</CardDescription>
+            <CardDescription>We found {issues.length} issues impacting your backend performance.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
@@ -49,23 +116,30 @@ export default function ResultsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {mockData.issues.map((issue) => (
+                  {issues.map((issue: any) => (
                     <tr key={issue.id} className="border-b border-[#222222] hover:bg-[#1A1A1A] transition-colors">
-                      <td className="px-4 py-4 font-medium text-white">{issue.title}</td>
+                      <td className="px-4 py-4 font-medium text-white max-w-[200px] truncate" title={issue.title}>{issue.title}</td>
                       <td className="px-4 py-4 text-[#A1A1AA]">{issue.category}</td>
                       <td className="px-4 py-4">
-                        <Badge variant={issue.severity === 'Critical' ? 'danger' : issue.severity === 'High' ? 'warning' : 'default'}>
+                        <Badge variant={issue.severity === 'critical' ? 'danger' : issue.severity === 'high' ? 'warning' : 'default'}>
                           {issue.severity}
                         </Badge>
                       </td>
-                      <td className="px-4 py-4 text-[#10B981]">+{issue.estimatedImprovementPercent}%</td>
+                      <td className="px-4 py-4 text-[#10B981]">+{issue.estimated_improvement_pct || 0}%</td>
                       <td className="px-4 py-4 text-right">
-                        <Link href={`/dashboard/issues/\${issue.id}`} className="text-[#06B6D4] hover:underline flex items-center justify-end gap-1">
+                        <Link href={`/dashboard/issues/${issue.id}`} className="text-[#06B6D4] hover:underline flex items-center justify-end gap-1">
                           <FileText className="h-4 w-4" /> View Details
                         </Link>
                       </td>
                     </tr>
                   ))}
+                  {issues.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-8 text-center text-[#A1A1AA]">
+                        No issues found in this scan. Great job!
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -85,16 +159,24 @@ export default function ResultsPage() {
               </div>
               <div className="space-y-2 text-sm leading-relaxed text-[#A1A1AA]">
                 <p>
-                  <strong className="text-white">Analysis Complete.</strong> Your application shows significant CPU blocking during cryptographic operations and N+1 query patterns in your database layer.
+                  <strong className="text-white">Analysis Complete.</strong> {aiReport.executive_summary || "No AI report generated for this scan."}
                 </p>
-                <p>
-                  By addressing the <span className="text-white">Critical</span> blocking synchronous operation in <code>cryptoService.ts</code>, you can expect an immediate ~40% reduction in average latency during peak traffic. Additionally, implementing Redis caching for your configuration routes will reduce database load significantly.
-                </p>
+                {aiReport.detailed_analysis && (
+                  <p className="mt-2 text-[#A1A1AA]">{aiReport.detailed_analysis}</p>
+                )}
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function ResultsPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-[#A1A1AA]">Loading interface...</div>}>
+      <ResultsContent />
+    </Suspense>
   );
 }

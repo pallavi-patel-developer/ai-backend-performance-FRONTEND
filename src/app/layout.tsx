@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { AuthProvider } from "./AuthProvider";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -20,7 +21,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} h-full antialiased dark`}>
       <body className="h-full bg-[#0A0A0A] text-white">
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

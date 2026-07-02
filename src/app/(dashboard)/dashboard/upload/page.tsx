@@ -4,9 +4,10 @@ import { useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Globe, Upload, ArrowRight, CheckCircle2,
-  AlertCircle, Loader2, Archive, X, Zap
+  AlertCircle, Loader2, Archive, X, Zap, Folder
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 
 const Github = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
@@ -56,8 +57,35 @@ export default function UploadPage() {
   const [scanId, setScanId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const searchParams = useSearchParams();
+  const initialProjectId = searchParams.get("projectId") || "";
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL;
+  const [projects, setProjects] = useState<any[]>([]);
+  const [selectedProject, setSelectedProject] = useState<string>(initialProjectId);
+
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        const token = localStorage.getItem("sb-access-token") || localStorage.getItem("supabase_token") || "demo-token";
+        const res = await fetch(`${API_URL}/api/projects`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setProjects(data);
+          if (!selectedProject && data.length > 0) {
+            setSelectedProject(data[0].id);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch projects");
+      }
+    };
+    fetchProjects();
+  }, [API_URL, selectedProject]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -78,10 +106,10 @@ export default function UploadPage() {
     setCurrentStageLabel("Initializing scan...");
 
     try {
+      const token = localStorage.getItem("sb-access-token") || localStorage.getItem("supabase_token") || "demo-token";
       let response: Response;
-      let body: string;
       let headers: Record<string, string> = {
-        "Authorization": `Bearer ${localStorage.getItem("supabase_token") || "demo-token"}`,
+        "Authorization": `Bearer ${token}`,
       };
 
       if (mode === "url") {
@@ -93,7 +121,7 @@ export default function UploadPage() {
         response = await fetch(`${API_URL}/api/scan/url`, {
           method: "POST",
           headers: { ...headers, "Content-Type": "application/json" },
-          body: JSON.stringify({ url: urlInput }),
+          body: JSON.stringify({ url: urlInput, projectId: selectedProject || undefined }),
         });
       } else if (mode === "zip") {
         if (!file) {
@@ -103,6 +131,7 @@ export default function UploadPage() {
         }
         const formData = new FormData();
         formData.append("file", file);
+        if (selectedProject) formData.append("projectId", selectedProject);
         response = await fetch(`${API_URL}/api/scan/upload`, {
           method: "POST",
           headers,
@@ -117,7 +146,7 @@ export default function UploadPage() {
         response = await fetch(`${API_URL}/api/scan/github`, {
           method: "POST",
           headers: { ...headers, "Content-Type": "application/json" },
-          body: JSON.stringify({ repoUrl: githubInput, githubToken: githubToken || undefined }),
+          body: JSON.stringify({ repoUrl: githubInput, githubToken: githubToken || undefined, projectId: selectedProject || undefined }),
         });
       }
 
@@ -132,9 +161,7 @@ export default function UploadPage() {
 
       // Connect to SSE stream for real-time progress
       const eventSource = new EventSource(
-        `${API_URL}/api/scan/stream/${newScanId}`,
-        // Note: EventSource doesn't support custom headers
-        // In production, pass token as query param (short-lived)
+        `${API_URL}/api/scan/stream/${newScanId}?token=${token}`
       );
 
       eventSource.onmessage = (event) => {
@@ -239,6 +266,30 @@ export default function UploadPage() {
 
             {/* Input Panel */}
             <div className="bg-[#111111] rounded-2xl border border-[#222222] p-6 space-y-5">
+              
+              {/* Project Selector */}
+              <div className="space-y-3 pb-4 border-b border-[#222222]">
+                <label className="text-sm font-medium text-white">Select Project</label>
+                <div className="flex items-center gap-3 bg-[#0A0A0A] border border-[#333333] rounded-lg px-4 focus-within:border-[#7C3AED] transition-colors">
+                  <Folder className="h-4 w-4 text-[#666666] flex-shrink-0" />
+                  <select
+                    value={selectedProject}
+                    onChange={(e) => setSelectedProject(e.target.value)}
+                    className="flex-1 bg-transparent py-3 text-white outline-none text-sm appearance-none"
+                  >
+                    <option value="" className="bg-[#0A0A0A] text-[#A1A1AA]">-- Select or leave empty --</option>
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id} className="bg-[#0A0A0A] text-white">
+                        {p.name || p.id}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {projects.length === 0 && (
+                  <p className="text-xs text-[#F59E0B]">No projects found. You can run a scan without a project, or create one first in the Projects tab.</p>
+                )}
+              </div>
+
               {mode === "url" && (
                 <div className="space-y-3">
                   <label className="text-sm font-medium text-white">Backend API URL</label>

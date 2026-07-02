@@ -42,7 +42,7 @@ export function Sidebar() {
           {navigation.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
             const Icon = item.icon;
-            
+
             return (
               <Link
                 key={item.name}
@@ -67,7 +67,7 @@ export function Sidebar() {
           })}
         </nav>
       </div>
-      <div className="p-4 border-t border-[#222222]">
+      {/* <div className="p-4 border-t border-[#222222]">
         <div className="flex items-center">
           <div className="h-8 w-8 rounded-full bg-gradient-to-r from-[#7C3AED] to-[#06B6D4]" />
           <div className="ml-3">
@@ -75,7 +75,7 @@ export function Sidebar() {
             <p className="text-xs text-[#A1A1AA]">Pro Plan</p>
           </div>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 }
